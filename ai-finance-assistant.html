@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Finance Assistant</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #242836;
+    --border: #2e3348;
+    --text: #e4e6f0;
+    --text2: #9ba0b5;
+    --accent: #6c5ce7;
+    --accent2: #a29bfe;
+    --green: #00cec9;
+    --red: #ff7675;
+    --yellow: #fdcb6e;
+    --radius: 12px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 320px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+  .sidebar-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-header h1 {
+    font-size: 18px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--green));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .sidebar-header p {
+    font-size: 12px;
+    color: var(--text2);
+    margin-top: 4px;
+  }
+  .stats {
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .stat-card {
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 12px;
+  }
+  .stat-card .label {
+    font-size: 11px;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .stat-card .value {
+    font-size: 18px;
+    font-weight: 700;
+    margin-top: 2px;
+  }
+  .stat-card .value.green { color: var(--green); }
+  .stat-card .value.red { color: var(--red); }
+  .data-section {
+    padding: 16px 20px;
+    flex: 1;
+    overflow-y: auto;
+  }
+  .data-section h3 {
+    font-size: 12px;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+  }
+  .data-upload {
+    background: var(--surface2);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .data-upload:hover { border-color: var(--accent); }
+  .data-upload input { display: none; }
+  .data-upload p { font-size: 13px; color: var(--text2); margin-top: 6px; }
+  .data-upload .icon { font-size: 24px; }
+  .sample-btn {
+    display: block;
+    width: 100%;
+    margin-top: 8px;
+    padding: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text2);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .sample-btn:hover { border-color: var(--accent); color: var(--text); }
+  .api-section {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+  }
+  .api-section label {
+    font-size: 11px;
+    color: var(--text2);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .api-section input {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+  }
+  .api-section input:focus { border-color: var(--accent); }
+  .api-section .hint {
+    font-size: 11px;
+    color: var(--text2);
+    margin-top: 4px;
+  }
+
+  /* Main Chat Area */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .chat-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .chat-header h2 { font-size: 16px; font-weight: 600; }
+  .chat-header .status {
+    font-size: 12px;
+    color: var(--text2);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .chat-header .status .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--red);
+  }
+  .chat-header .status.connected .dot { background: var(--green); }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .message {
+    display: flex;
+    gap: 12px;
+    max-width: 80%;
+  }
+  .message.user { align-self: flex-end; flex-direction: row-reverse; }
+  .message.assistant { align-self: flex-start; }
+  .message .avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .message.user .avatar { background: var(--accent); }
+  .message.assistant .avatar { background: var(--surface2); border: 1px solid var(--border); }
+  .message .bubble {
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .message.user .bubble {
+    background: var(--accent);
+    border-bottom-right-radius: 4px;
+  }
+  .message.assistant .bubble {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+  }
+  .message .bubble .context-tag {
+    display: inline-block;
+    font-size: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin-right: 4px;
+    color: var(--text2);
+    margin-bottom: 6px;
+  }
+  .message .bubble pre {
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 10px;
+    margin-top: 8px;
+    overflow-x: auto;
+    font-size: 12px;
+  }
+
+  .typing { display: flex; gap: 4px; padding: 4px 0; }
+  .typing span {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--text2);
+    animation: bounce 1.4s infinite ease-in-out;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce {
+    0%, 80%, 100% { transform: scale(0); }
+    40% { transform: scale(1); }
+  }
+
+  .quick-prompts {
+    padding: 12px 24px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    border-top: 1px solid var(--border);
+  }
+  .quick-prompts button {
+    padding: 6px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text2);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .quick-prompts button:hover {
+    border-color: var(--accent);
+    color: var(--text);
+    background: var(--surface2);
+  }
+
+  .chat-input-area {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+  }
+  .chat-input-area input {
+    flex: 1;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+  }
+  .chat-input-area input:focus { border-color: var(--accent); }
+  .chat-input-area button {
+    padding: 12px 24px;
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius);
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .chat-input-area button:hover { opacity: 0.9; }
+  .chat-input-area button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text2); }
+
+  /* Empty state */
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    color: var(--text2);
+  }
+  .empty-state .icon { font-size: 48px; }
+  .empty-state h3 { font-size: 18px; color: var(--text); }
+  .empty-state p { font-size: 14px; text-align: center; max-width: 400px; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-header">
+    <h1>AI Finance Assistant</h1>
+    <p>RAG-powered financial analysis</p>
+  </div>
+  <div class="stats">
+    <div class="stat-card">
+      <div class="label">Total Income</div>
+      <div class="value green" id="statIncome">GHS 0</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Total Spend</div>
+      <div class="value red" id="statSpend">GHS 0</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Net Savings</div>
+      <div class="value" id="statNet">GHS 0</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Transactions</div>
+      <div class="value" id="statCount">0</div>
+    </div>
+  </div>
+  <div class="data-section">
+    <h3>Data Source</h3>
+    <label class="data-upload" for="fileInput">
+      <div class="icon">📁</div>
+      <p>Click to upload CSV or JSON</p>
+      <input type="file" id="fileInput" accept=".csv,.json">
+    </label>
+    <button class="sample-btn" onclick="loadSampleData()">Load Sample Data (GHS)</button>
+    <div id="dataInfo" style="margin-top:12px;font-size:12px;color:var(--text2);"></div>
+  </div>
+  <div class="api-section">
+    <label>OpenRouter API Key</label>
+    <input type="password" id="apiKey" placeholder="sk-or-...">
+    <p class="hint">Get a free key at <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--accent2)">openrouter.ai</a>. Stored locally only.</p>
+  </div>
+</div>
+
+<div class="main">
+  <div class="chat-header">
+    <h2>Ask Your Finances</h2>
+    <div class="status" id="statusIndicator">
+      <span class="dot"></span>
+      <span id="statusText">No API key</span>
+    </div>
+  </div>
+
+  <div class="chat-messages" id="chatMessages">
+    <div class="empty-state">
+      <div class="icon">🤖</div>
+      <h3>Your AI Financial Analyst</h3>
+      <p>Upload your transaction data or load samples, add your OpenRouter API key, and ask anything about your spending. Uses RAG to ground answers in your actual data.</p>
+    </div>
+  </div>
+
+  <div class="quick-prompts">
+    <button onclick="quickPrompt('Where did I spend the most this month?')">Top spending</button>
+    <button onclick="quickPrompt('What subscriptions can I cancel?')">Cancel subscriptions</button>
+    <button onclick="quickPrompt('How much did I save vs last month?')">Savings trend</button>
+    <button onclick="quickPrompt('What are my top 3 expense categories?')">Top categories</button>
+    <button onclick="quickPrompt('Give me a financial health summary')">Health summary</button>
+  </div>
+
+  <div class="chat-input-area">
+    <input type="text" id="chatInput" placeholder="Ask about your finances..." onkeypress="if(event.key==='Enter')sendMessage()">
+    <button id="sendBtn" onclick="sendMessage()">Send</button>
+  </div>
+</div>
+
+<script>
+// ── State ──
+let transactions = [];
+let apiKey = localStorage.getItem('openrouter_api_key') || '';
+let conversationHistory = [];
+
+// ── Sample Data ──
+const SAMPLE_DATA = [
+  { date: "2026-09-01", description: "Salary", amount: 5000, category: "Income", month: "2026-09" },
+  { date: "2026-09-02", description: "Rent", amount: -1200, category: "Housing", month: "2026-09" },
+  { date: "2026-09-03", description: "Groceries - Shoprite", amount: -350, category: "Food", month: "2026-09" },
+  { date: "2026-09-05", description: "Uber", amount: -80, category: "Transport", month: "2026-09" },
+  { date: "2026-09-07", description: "Netflix", amount: -50, category: "Subscription", month: "2026-09", recurring: true },
+  { date: "2026-09-08", description: "Spotify", amount: -25, category: "Subscription", month: "2026-09", recurring: true },
+  { date: "2026-09-10", description: "Electricity", amount: -200, category: "Utilities", month: "2026-09" },
+  { date: "2026-09-12", description: "Water", amount: -80, category: "Utilities", month: "2026-09" },
+  { date: "2026-09-15", description: "Freelance Payment", amount: 800, category: "Income", month: "2026-09" },
+  { date: "2026-09-16", description: "Groceries - Melcom", amount: -280, category: "Food", month: "2026-09" },
+  { date: "2026-09-18", description: "Eating out - KFC", amount: -120, category: "Dining", month: "2026-09" },
+  { date: "2026-09-20", description: "Mobile data", amount: -60, category: "Utilities", month: "2026-09" },
+  { date: "2026-09-22", description: "Gas", amount: -100, category: "Transport", month: "2026-09" },
+  { date: "2026-09-25", description: "Gym", amount: -150, category: "Subscription", month: "2026-09", recurring: true },
+  { date: "2026-09-28", description: "Groceries - Shoprite", amount: -310, category: "Food", month: "2026-09" },
+  { date: "2026-09-30", description: "Church tithe", amount: -500, category: "Giving", month: "2026-09" },
+  { date: "2026-10-01", description: "Salary", amount: 5000, category: "Income", month: "2026-10" },
+  { date: "2026-10-02", description: "Rent", amount: -1200, category: "Housing", month: "2026-10" },
+  { date: "2026-10-04", description: "Groceries - Shoprite", amount: -400, category: "Food", month: "2026-10" },
+  { date: "2026-10-06", description: "Uber", amount: -95, category: "Transport", month: "2026-10" },
+  { date: "2026-10-08", description: "Netflix", amount: -50, category: "Subscription", month: "2026-10", recurring: true },
+  { date: "2026-10-09", description: "Spotify", amount: -25, category: "Subscription", month: "2026-10", recurring: true },
+  { date: "2026-10-11", description: "Electricity", amount: -250, category: "Utilities", month: "2026-10" },
+  { date: "2026-10-13", description: "Freelance Payment", amount: 1200, category: "Income", month: "2026-10" },
+  { date: "2026-10-15", description: "Groceries - Melcom", amount: -320, category: "Food", month: "2026-10" },
+  { date: "2026-10-17", description: "Eating out - Pizzaman", amount: -180, category: "Dining", month: "2026-10" },
+  { date: "2026-10-20", description: "Mobile data", amount: -60, category: "Utilities", month: "2026-10" },
+  { date: "2026-10-22", description: "Gym", amount: -150, category: "Subscription", month: "2026-10", recurring: true },
+  { date: "2026-10-25", description: "New phone accessories", amount: -350, category: "Shopping", month: "2026-10" },
+  { date: "2026-10-28", description: "Church tithe", amount: -500, category: "Giving", month: "2026-10" },
+];
+
+function loadSampleData() {
+  transactions = [...SAMPLE_DATA];
+  updateStats();
+  showNotification('Sample data loaded: 30 transactions across Sep-Oct 2026');
+}
+
+// ── Stats ──
+function updateStats() {
+  const income = transactions.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+  const spend = transactions.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
+  const net = income - spend;
+  document.getElementById('statIncome').textContent = `GHS ${income.toLocaleString()}`;
+  document.getElementById('statSpend').textContent = `GHS ${spend.toLocaleString()}`;
+  document.getElementById('statNet').textContent = `GHS ${net.toLocaleString()}`;
+  document.getElementById('statNet').className = 'value ' + (net >= 0 ? 'green' : 'red');
+  document.getElementById('statCount').textContent = transactions.length;
+  document.getElementById('dataInfo').textContent = `${transactions.length} transactions loaded`;
+}
+
+// ── File Upload ──
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    const text = event.target.result;
+    try {
+      if (file.name.endsWith('.json')) {
+        const data = JSON.parse(text);
+        transactions = Array.isArray(data) ? data : (data.transactions || data.data || []);
+      } else {
+        transactions = parseCSV(text);
+      }
+      updateStats();
+      showNotification(`Loaded ${transactions.length} transactions from ${file.name}`);
+    } catch (err) {
+      alert('Error parsing file: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+});
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+  return lines.slice(1).map(line => {
+    const vals = line.split(',').map(v => v.trim());
+    const obj = {};
+    headers.forEach((h, i) => {
+      if (h === 'amount' || h === 'amount_ghs') obj.amount = parseFloat(vals[i]);
+      else if (h === 'date') obj.date = vals[i];
+      else if (h === 'description' || h === 'desc') obj.description = vals[i];
+      else if (h === 'category') obj.category = vals[i];
+      else obj[h] = vals[i];
+    });
+    if (!obj.month && obj.date) obj.month = obj.date.substring(0, 7);
+    return obj;
+  }).filter(t => !isNaN(t.amount));
+}
+
+// ── API Key ──
+document.getElementById('apiKey').value = apiKey;
+document.getElementById('apiKey').addEventListener('input', function() {
+  apiKey = this.value.trim();
+  localStorage.setItem('openrouter_api_key', apiKey);
+  updateStatus();
+});
+
+function updateStatus() {
+  const indicator = document.getElementById('statusIndicator');
+  const text = document.getElementById('statusText');
+  if (apiKey) {
+    indicator.classList.add('connected');
+    text.textContent = 'Connected';
+  } else {
+    indicator.classList.remove('connected');
+    text.textContent = 'No API key';
+  }
+}
+
+// ── RAG System ──
+function retrieveContext(query) {
+  const q = query.toLowerCase();
+  const scored = transactions.map(t => {
+    let score = 0;
+    const desc = (t.description || '').toLowerCase();
+    const cat = (t.category || '').toLowerCase();
+
+    // Keyword matching
+    if (q.includes('subscription') && t.recurring) score += 10;
+    if (q.includes('food') && (cat.includes('food') || cat.includes('grocery'))) score += 8;
+    if (q.includes('transport') && cat.includes('transport')) score += 8;
+    if (q.includes('util') && cat.includes('util')) score += 8;
+    if (q.includes('income') && cat.includes('income')) score += 8;
+    if (q.includes('save') && cat.includes('saving')) score += 8;
+    if (q.includes('rent') && desc.includes('rent')) score += 7;
+    if (q.includes('grocery') && desc.includes('grocery')) score += 7;
+    if (q.includes('dining') && (cat.includes('dining') || desc.includes('out'))) score += 7;
+    if (q.includes('health') || q.includes('summary')) score += 3;
+
+    // Partial matches
+    q.split(/\s+/).forEach(word => {
+      if (word.length > 2 && desc.includes(word)) score += 2;
+      if (word.length > 2 && cat.includes(word)) score += 2;
+    });
+
+    return { ...t, score };
+  });
+
+  // Get top relevant transactions
+  const relevant = scored.filter(t => t.score > 0).sort((a, b) => b.score - a.score).slice(0, 10);
+
+  // If no strong matches, include top 5 by amount
+  if (relevant.length < 3) {
+    const byAmount = [...transactions].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount)).slice(0, 5);
+    byAmount.forEach(t => { if (!relevant.find(r => r.date === t.date && r.description === t.description)) relevant.push({ ...t, score: 1 }); });
+  }
+
+  return relevant;
+}
+
+function formatContextForPrompt(context) {
+  return context.map(t => {
+    const sign = t.amount >= 0 ? '+' : '';
+    return `${t.date} | ${t.description} | GHS ${sign}${t.amount} | ${t.category}`;
+  }).join('\n');
+}
+
+function computeStats() {
+  const income = transactions.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+  const spend = transactions.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
+  const net = income - spend;
+
+  const byCat = {};
+  transactions.filter(t => t.amount < 0).forEach(t => {
+    byCat[t.category] = (byCat[t.category] || 0) + Math.abs(t.amount);
+  });
+  const topCats = Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+  const subs = transactions.filter(t => t.recurring).reduce((s, t) => s + Math.abs(t.amount), 0);
+
+  return { income, spend, net, topCats, subs, count: transactions.length };
+}
+
+// ── Chat ──
+function quickPrompt(text) {
+  document.getElementById('chatInput').value = text;
+  sendMessage();
+}
+
+function addMessage(role, content, contextLines) {
+  const container = document.getElementById('chatMessages');
+  const empty = container.querySelector('.empty-state');
+  if (empty) empty.remove();
+
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+
+  let contextHtml = '';
+  if (contextLines && contextLines.length > 0) {
+    contextHtml = '<div style="margin-bottom:6px;">' + contextLines.slice(0, 3).map(c =>
+      `<span class="context-tag">${c}</span>`
+    ).join('') + '</div>';
+  }
+
+  div.innerHTML = `
+    <div class="avatar">${role === 'user' ? '👤' : '🤖'}</div>
+    <div class="bubble">${contextHtml}${content}</div>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+function showTyping() {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'message assistant';
+  div.id = 'typingIndicator';
+  div.innerHTML = `
+    <div class="avatar">🤖</div>
+    <div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function removeTyping() {
+  const el = document.getElementById('typingIndicator');
+  if (el) el.remove();
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const btn = document.getElementById('sendBtn');
+  const query = input.value.trim();
+  if (!query) return;
+
+  if (!apiKey) {
+    addMessage('assistant', '⚠️ Please add your OpenRouter API key in the sidebar first. Get a free key at <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai</a>.');
+    return;
+  }
+
+  if (transactions.length === 0) {
+    addMessage('assistant', '⚠️ Please load some transaction data first. Click "Load Sample Data" or upload a CSV/JSON file.');
+    return;
+  }
+
+  input.value = '';
+  btn.disabled = true;
+
+  // Retrieve relevant context (RAG)
+  const context = retrieveContext(query);
+  const contextLines = context.slice(0, 3).map(t => t.description);
+
+  // Add user message
+  addMessage('user', query.replace(/</g, '&lt;'));
+  showTyping();
+
+  // Build prompt with RAG context
+  const stats = computeStats();
+  const contextStr = formatContextForPrompt(context);
+
+  const systemPrompt = `You are an AI Financial Analyst for a Ghanaian user. You have access to their real transaction data through RAG (Retrieval-Augmented Generation).
+
+FINANCIAL SUMMARY:
+- Total Income: GHS ${stats.income.toLocaleString()}
+- Total Spending: GHS ${stats.spend.toLocaleString()}
+- Net Savings: GHS ${stats.net.toLocaleString()}
+- Monthly Subscriptions: GHS ${stats.subs.toLocaleString()}
+- Transaction Count: ${stats.count}
+
+TOP SPENDING CATEGORIES:
+${stats.topCats.map(([cat, amt]) => `- ${cat}: GHS ${amt.toLocaleString()}`).join('\n')}
+
+RELEVANT TRANSACTIONS (retrieved via RAG):
+${contextStr}
+
+INSTRUCTIONS:
+- Answer in a conversational, helpful tone
+- Reference specific transactions when relevant
+- Give actionable financial advice
+- Use GHS (Ghana Cedi) as currency
+- Keep responses concise (3-5 sentences)
+- If the data doesn't fully answer the question, say so and suggest what data would help`;
+
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://github.com/Jesseokai/ai-finance-assistant',
+        'X-Title': 'AI Finance Assistant'
+      },
+      body: JSON.stringify({
+        model: 'anthropic/claude-3-haiku',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...conversationHistory.slice(-6),
+          { role: 'user', content: query }
+        ],
+        temperature: 0.7,
+        max_tokens: 500
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error?.message || `API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const reply = data.choices[0].message.content;
+
+    removeTyping();
+    addMessage('assistant', reply.replace(/</g, '&lt;').replace(/\n/g, '<br>'), contextLines);
+
+    // Update history
+    conversationHistory.push({ role: 'user', content: query });
+    conversationHistory.push({ role: 'assistant', content: reply });
+
+  } catch (err) {
+    removeTyping();
+    addMessage('assistant', `❌ Error: ${err.message}<br><br>Check your API key and internet connection. <a href="https://openrouter.ai/keys" target="_blank">Get a free key here</a>.`);
+  }
+
+  btn.disabled = false;
+}
+
+// ── Utilities ──
+function showNotification(msg) {
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;top:20px;right:20px;padding:12px 20px;background:var(--surface);border:1px solid var(--accent);border-radius:8px;color:var(--text);font-size:13px;z-index:9999;';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// Init
+updateStatus();
+</script>
+</body>
+</html>
